@@ -1,0 +1,24 @@
+{
+	"include": [
+		"src",
+		"global.d.ts"
+	],
+	"compilerOptions": {
+		"experimentalDecorators": true,
+		"moduleResolution": "node",
+		"module": "commonjs",
+		"target": "es5",
+		"lib": [
+			"es2017"
+		],
+		"rootDir": "src",
+		"declaration": true,
+		"importHelpers": true,
+		"allowSyntheticDefaultImports": true,
+		"sourceMap": true,
+		"downlevelIteration": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"allowJs": true
+	}
+}
