@@ -98,3 +98,9 @@ export const appendParams = (url, data) => {
 
   return (url.indexOf('?') > -1 ? `${url}&` : `${url}?`) + paramArr.join('&');
 };
+
+export const tryCallHandler = (context, eventName, ...params) => {
+  if (typeof context[`_${eventName}Handler`] === 'function') {
+    context[`_${eventName}Handler`](...params);
+  }
+};

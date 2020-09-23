@@ -3,7 +3,6 @@ import EventEmitter from "../libs/event-emmiter";
 import { arrayBufferToHexStringArray, hexToArrayBuffer, isEmpty } from "../libs/utillib";
 
 export interface BlueToothAdapter4MpProps extends BlueToothAdapterProps {
-  h5Websocket?: EventEmitter;
   devMode?: boolean;
 }
 
@@ -36,27 +35,23 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
   // 当前h5是否正在使用搜索
   _h5DiscoveringInUse = false;
 
-  _h5Websocket = null;
-
   _cleanupTimer = null;
 
   _currentProductId = '';
 
   constructor({
-    h5Websocket,
     devMode,
     ...props
   }: BlueToothAdapter4MpProps) {
     super(props);
 
-    if (h5Websocket && typeof h5Websocket.on === 'function') {
-      this._h5Websocket = h5Websocket;
+    if (this._h5Websocket && typeof this._h5Websocket.on === 'function') {
 
       this.on('adapterStateChange', ({ available, discovering }) => {
         this.response2BlueToothChanel('onBluetoothAdapterStateChange', { available, discovering });
       })
 
-      h5Websocket
+      this._h5Websocket
         .on('message', async ({ data, reqId }) => {
           console.log('bluetooth ws on message', data);
 

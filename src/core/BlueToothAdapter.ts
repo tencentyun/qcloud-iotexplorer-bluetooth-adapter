@@ -3,6 +3,7 @@ import { BlueToothBase } from './BlueToothBase';
 import { DeviceAdapter, DeviceInfo } from './DeviceAdapter';
 import nativeBluetoothApi from './nativeBluetoothApi';
 import { throttle } from '../libs/throttle';
+import EventEmitter from "../libs/event-emmiter";
 
 // 交由外部实现如下action，核心代码不关注其各端差异
 export interface BlueToothActions {
@@ -17,6 +18,7 @@ export interface BlueToothAdapterProps {
   deviceAdapters: DeviceAdapter[];
   actions: BlueToothActions;
   bluetoothApi: any;
+  h5Websocket: EventEmitter;
 }
 
 export interface SearchDeviceBaseParams {
@@ -47,6 +49,7 @@ export class BlueToothAdapter extends BlueToothBase {
     deviceAdapters = [],
     actions,
     bluetoothApi,
+    h5Websocket,
   }: BlueToothAdapterProps) {
     super();
 
@@ -64,10 +67,12 @@ export class BlueToothAdapter extends BlueToothBase {
       console.error('无合法的deviceAdapter');
     }
 
+    this._h5Websocket = h5Websocket;
     this._bluetoothApi = bluetoothApi || nativeBluetoothApi;
     this._actions = actions;
   }
 
+  _h5Websocket;
   _bluetoothApi: any = {};
 
   // @ts-ignore
