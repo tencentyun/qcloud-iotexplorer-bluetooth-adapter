@@ -1,10 +1,5 @@
 import { BlueToothAdapter, BlueToothAdapterProps, SearchDeviceParams, StartSearchParams } from "../core";
-import EventEmitter from "../libs/event-emmiter";
 import { arrayBufferToHexStringArray, hexToArrayBuffer, isEmpty } from "../libs/utillib";
-
-export interface BlueToothAdapter4MpProps extends BlueToothAdapterProps {
-  devMode?: boolean;
-}
 
 const parseAdvertisData = (device) => {
   const result = { ...device };
@@ -40,10 +35,13 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
   _currentProductId = '';
 
   constructor({
-    devMode,
+    bluetoothApi,
     ...props
-  }: BlueToothAdapter4MpProps) {
-    super(props);
+  }: BlueToothAdapterProps) {
+    super({
+      bluetoothApi,
+      ...props
+    });
 
     if (this._h5Websocket && typeof this._h5Websocket.on === 'function') {
 
@@ -64,7 +62,9 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
                 const { deviceName, productId } = payload;
 
                 await this._actions.bindDevice({
-                  deviceId: `${devMode && productId ? productId : this._currentProductId}/${deviceName}`,
+                  // 只有调试模式下，传了productId使用指定productId，否则都用当前打开的产品id
+                  productId: this.devMode && productId ? productId : this._currentProductId,
+                  deviceName,
                 });
 
                 this.response2BlueToothChanel('response', { code: 0 }, reqId);
@@ -80,7 +80,8 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
 
                 await this._actions.registerDevice({
                   // 只有调试模式下，传了productId使用指定productId，否则都用当前打开的产品id
-                  deviceId: `${devMode && productId ? productId : this._currentProductId}/${deviceName}`,
+                  productId: this.devMode && productId ? productId : this._currentProductId,
+                  deviceName,
                 });
                 this.response2BlueToothChanel('response', { code: 0 }, reqId);
               } catch (err) {
@@ -119,6 +120,13 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
 
                 // 先处理需要特殊处理的api
                 switch (api) {
+                  case 'createBLEConnection': {
+                    await this._bluetoothApi.createBLEConnection(params);
+
+                    this.response2BlueToothChanel('response', {}, reqId);
+
+                    return;
+                  }
                   case 'getBluetoothDevices': {
                     const devices = await this.getBluetoothDevices();
 
@@ -261,7 +269,7 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
       }
 
       this.cleanup();
-    }, 30 * 1000); // TODO: 这个时间需要观察如何最佳
+    }, 5 * 1000); // TODO: 这个时间需要观察如何最佳
   }
 
   async init() {

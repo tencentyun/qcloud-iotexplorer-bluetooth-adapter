@@ -1,12 +1,13 @@
 {
 	"name": "qcloud-iotexplorer-bluetooth-adapter",
-	"version": "0.0.1",
+	"version": "0.0.3",
 	"description": "",
 	"main": "lib/index.js",
 	"scripts": {
 		"build:lib": "rm -rf lib && npx tsc -p tsconfig.json -t es5 --outDir lib && node bin/minify.js -t lib",
-		"build": "npm run build:lib"
-	},
+		"build": "npm run build:lib",
+    "dev": "rm -rf ../iot-weapp/src/lib/bluetooth-debug && npx tsc -p tsconfig.json -t es5 --outDir ../iot-weapp/src/lib/bluetooth-debug --watch"
+  },
 	"author": "xiaoyuze88@gmail.com",
 	"license": "MIT",
 	"bugs": {

@@ -7,11 +7,31 @@ import EventEmitter from "../libs/event-emmiter";
 
 // 交由外部实现如下action，核心代码不关注其各端差异
 export interface BlueToothActions {
-  initProductIds: () => Promise<{ [propKey: string]: string; }>;
-  registerDevice: ({ deviceId: string }) => Promise<any>;
+  initProductIds?: () => Promise<{ [propKey: string]: string; }>;
+  registerDevice: ({
+    deviceId,
+    deviceName,
+    productId,
+  }: {
+    deviceId?: string;
+    deviceName?: string;
+    productId?: string;
+  }) => Promise<any>;
   // familyId 和 roomId 不一定会传，外面需要处理默认取当前家庭及房间
-  bindDevice: (params: { deviceId: string; familyId?: string; roomId?: string }) => Promise<any>;
-  reportDeviceData: (params: { deviceId: string; data: any; timestamp: number }) => Promise<any>;
+  bindDevice: (params: {
+    deviceId?: string;
+    deviceName?: string;
+    productId?: string;
+    familyId?: string;
+    roomId?: string;
+  }) => Promise<any>;
+  reportDeviceData: (params: {
+    deviceId?: string;
+    deviceName?: string;
+    productId?: string;
+    data: any;
+    timestamp: number;
+  }) => Promise<any>;
 }
 
 export interface BlueToothAdapterProps {
@@ -19,6 +39,7 @@ export interface BlueToothAdapterProps {
   actions: BlueToothActions;
   bluetoothApi: any;
   h5Websocket: EventEmitter;
+  devMode?: (() => boolean) | boolean;
 }
 
 export interface SearchDeviceBaseParams {
@@ -50,26 +71,29 @@ export class BlueToothAdapter extends BlueToothBase {
     actions,
     bluetoothApi,
     h5Websocket,
+    devMode,
   }: BlueToothAdapterProps) {
     super();
 
-    for (let i = 0, l = deviceAdapters.length; i < l; i++) {
-      if (!Object.prototype.isPrototypeOf.call(DeviceAdapter, deviceAdapters[i])) {
-        console.error('非法的设备连接器', deviceAdapters[i]);
-      } else if (!deviceAdapters[i].serviceId) {
-        console.error('非法的设备连接器，未配置serviceId', deviceAdapters[i]);
-      } else {
-        this._deviceAdapterMap[deviceAdapters[i].serviceId] = deviceAdapters[i];
-      }
-    }
+    this._devMode = devMode;
+
+    this.addAdapter(deviceAdapters);
 
     if (isEmpty(this._deviceAdapterMap)) {
-      console.error('无合法的deviceAdapter');
+      console.warn('无合法的deviceAdapter');
     }
 
     this._h5Websocket = h5Websocket;
     this._bluetoothApi = bluetoothApi || nativeBluetoothApi;
     this._actions = actions;
+  }
+
+  _devMode: (() => boolean) | boolean = false;
+
+  get devMode() {
+    if (typeof this._devMode === 'function') return this._devMode();
+
+    return this._devMode
   }
 
   _h5Websocket;
@@ -98,6 +122,24 @@ export class BlueToothAdapter extends BlueToothBase {
   _initPromise = null;
 
   _searchDevicePromise = null;
+
+  addAdapter(deviceAdapter) {
+    const doAdd = (adapter) => {
+      if (!Object.prototype.isPrototypeOf.call(DeviceAdapter, adapter)) {
+        console.error('非法的设备适配器', adapter);
+      } else if (!adapter.serviceId) {
+        console.error('非法的设备适配器，未配置serviceId', adapter);
+      } else {
+        this._deviceAdapterMap[adapter.serviceId] = adapter;
+      }
+    };
+
+    if (deviceAdapter && deviceAdapter.splice) {
+      deviceAdapter.forEach(doAdd);
+    } else {
+      doAdd(deviceAdapter);
+    }
+  }
 
   _filterDevices({
     devices = [],
@@ -263,7 +305,10 @@ export class BlueToothAdapter extends BlueToothBase {
   }
 
   async initProductIds() {
-    this._productIdMap = await this._actions.initProductIds();
+    // 不是所有端都需要初始化 productId，比如h5和插件侧
+    if (typeof this._actions.initProductIds === 'function') {
+      this._productIdMap = await this._actions.initProductIds();
+    }
   }
 
   onBleConnectionStateChange({ deviceId, connected }) {
@@ -479,6 +524,7 @@ export class BlueToothAdapter extends BlueToothBase {
     deviceName,
     name,
     productId,
+    autoNotify,
   }: {
     deviceId: string;
     serviceId: string;
@@ -486,6 +532,7 @@ export class BlueToothAdapter extends BlueToothBase {
     deviceName: string;
     name: string;
     productId?: string;
+    autoNotify?: boolean;
   }) {
     if (mac) {
       console.warn('[DEPRECATED] mac is deprecated, please use deviceName instead.');
@@ -516,7 +563,7 @@ export class BlueToothAdapter extends BlueToothBase {
         bluetoothApi: this._bluetoothApi,
       });
 
-      await deviceAdapter.connectDevice();
+      await deviceAdapter.connectDevice({ autoNotify });
 
       console.log('deviceConnected');
 

@@ -17,7 +17,7 @@ export class BlueToothBridge extends EventEmitter {
     super();
 
     this._h5Websocket = h5Websocket;
-    this._h5Websocket.h5Websocket
+    this._h5Websocket
       .on('message', async ({ action, payload }) => {
         switch (action) {
           case 'connect':
@@ -50,6 +50,10 @@ export class BlueToothBridge extends EventEmitter {
     await this._h5Websocket.send('Control', {
       action: 'init'
     });
+  }
+
+  openBluetoothAdapter() {
+    return this.init();
   }
 
   control(action, payload) {

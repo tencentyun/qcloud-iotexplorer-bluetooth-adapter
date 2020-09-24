@@ -1,4 +1,4 @@
-import { arrayBufferToHexStringArray, hexToArrayBuffer, noop } from '../libs/utillib';
+import { arrayBufferToHexStringArray, hexToArrayBuffer, hexToStr, } from '../libs/utillib';
 import { BlueToothBase } from './BlueToothBase';
 import { BlueToothActions } from "./BlueToothAdapter";
 
@@ -7,12 +7,28 @@ export interface DeviceInfo extends WechatMiniprogram.BlueToothDevice {
   serviceId: string;
 }
 
+export interface BLEMessageResponse {
+  shouldIgnore?: boolean;
+  reportData?: any; // 需要上报的数据，会原样调用 controlDeviceData
+  [propName: string]: any; // 其他会透传给 message 事件
+}
+
 type DeviceAdapterActions = Omit<BlueToothActions, 'initProductIds'>;
 
 /**
  * 设备适配器
  */
 export class DeviceAdapter extends BlueToothBase {
+  static helper: {
+    hexToArrayBuffer: (hexString: string) => ArrayBuffer;
+    arrayBufferToHexStringArray: (arrayBuffer: ArrayBuffer) => string[];
+    hexToStr: (hexString: string) => string;
+  } = {
+    hexToArrayBuffer,
+    arrayBufferToHexStringArray,
+    hexToStr,
+  };
+
   constructor({
     deviceId,
     productId,
@@ -54,31 +70,45 @@ export class DeviceAdapter extends BlueToothBase {
 
   _deviceConnected = false;
 
-  // write支持多个
-  _writeIds = [];
-
-  _notifyIds = [];
-
-  // read支持多个
-  _readIds = [];
-
-  _indicateIds = [];
-
   _productId = '';
 
   _deviceRegistered = false;
 
   _services = [];
 
-  _characteristics = [];
+  // serviceId => {writeId: [], notifyId: [], readId: [], indicateId: []}
+  characteristicsMap = {};
 
   // @ts-ignore
   _actions: DeviceAdapterActions = {};
 
   _bluetoothApi: any = {};
 
-  _getNotifyId() {
-    return this._notifyIds[0] || this._indicateIds[0];
+  _getNotifyId({ serviceId = '' } = {}) {
+    serviceId = serviceId || this.serviceId;
+
+    const characteristicsMap = this.characteristicsMap[serviceId] || {
+      writeIds: [], notifyIds: [], readIds: [], indicateIds: []
+    };
+
+    return characteristicsMap.notifyIds[0] || characteristicsMap.indicateIds[0];
+  }
+
+  // 下面4个为向前兼容
+  get _writeId() {
+    return ((this.characteristicsMap[this.serviceId] || {}).writeIds || [])[0];
+  }
+
+  get _notifyId() {
+    return ((this.characteristicsMap[this.serviceId] || {}).notifyIds || [])[0];
+  }
+
+  get _readId() {
+    return ((this.characteristicsMap[this.serviceId] || {}).readIds || [])[0];
+  }
+
+  get _indicateId() {
+    return ((this.characteristicsMap[this.serviceId] || {}).indicateIds || [])[0];
   }
 
   get deviceId() {
@@ -112,8 +142,11 @@ export class DeviceAdapter extends BlueToothBase {
 
   // 各自适配器根据业务需要覆盖，
   // 如需上报，返回包里加入 data.reportData = { ...data }
-  handleBLEMessage(data) {
-    return data;
+  handleBLEMessage(hexStrArr: string[], { serviceId, characteristicId }: {
+    serviceId: string;
+    characteristicId: string;
+  }): BLEMessageResponse {
+    return {};
   }
 
   /**
@@ -128,7 +161,7 @@ export class DeviceAdapter extends BlueToothBase {
    * @param deviceInfo
    * @param extendInfo
    */
-  static deviceFilter(deviceInfo: WechatMiniprogram.BlueToothDevice, extendInfo?: any): DeviceInfo {
+  static deviceFilter(deviceInfo: WechatMiniprogram.BlueToothDevice, extendInfo?: any): DeviceInfo | false {
     throw new Error('具体产品需要自行实现该方法');
   }
 
@@ -139,6 +172,8 @@ export class DeviceAdapter extends BlueToothBase {
     if (!this._deviceRegistered) {
       await this._actions.registerDevice({
         deviceId: this.explorerDeviceId,
+        deviceName: this._deviceName,
+        productId: this._productId,
       });
 
       this._deviceRegistered = true;
@@ -147,14 +182,16 @@ export class DeviceAdapter extends BlueToothBase {
 
   // 设备绑定到家庭
   async bindDevice({
-    familyId,
-    roomId,
-  }) {
+    familyId = '',
+    roomId = '',
+  } = {}) {
     try {
       await this.registerDevice();
 
       await this._actions.bindDevice({
         deviceId: this.explorerDeviceId,
+        deviceName: this._deviceName,
+        productId: this._productId,
         familyId,
         roomId,
       });
@@ -166,14 +203,17 @@ export class DeviceAdapter extends BlueToothBase {
   }
 
   onBleConnectionStateChange({ connected }) {
-    this._deviceConnected = connected;
-    this.emit('bLEConnectionStateChange', { connected });
+    console.log('onBleConnectionStateChange', connected, this._deviceConnected);
 
     if (connected) {
       this.emit('connect');
-    } else {
+    } else if (this._deviceConnected) {
+      // 当前状态是连接中，且新状态是断开时，才会去调 disconnect
       this.disconnectDevice();
     }
+
+    this._deviceConnected = connected;
+    this.emit('bLEConnectionStateChange', { connected });
   }
 
   async onBLECharacteristicValueChange({
@@ -182,34 +222,37 @@ export class DeviceAdapter extends BlueToothBase {
     value,
   }) {
     try {
-      if (serviceId === this.serviceId && characteristicId === this._getNotifyId()) {
-        const hexValue = arrayBufferToHexStringArray(value);
-        const { shouldIgnore, reportData, ...message } = this.handleBLEMessage(hexValue);
+      const hexValue = arrayBufferToHexStringArray(value);
+      const { shouldIgnore, reportData, ...message } = this.handleBLEMessage(hexValue, {
+        serviceId,
+        characteristicId,
+      });
 
-        console.log('shouldIgnore?', shouldIgnore);
+      console.log('shouldIgnore?', shouldIgnore);
 
-        if (shouldIgnore) {
-          return;
-        }
-
-        console.log('receive data', hexValue, message);
-        console.log('should report?', !!reportData, reportData);
-
-        const timestamp = Date.now();
-        let dataReported = false;
-
-        if (this._deviceName && reportData) {
-          dataReported = true;
-
-          await this._actions.reportDeviceData({
-            deviceId: this.explorerDeviceId,
-            data: reportData,
-            timestamp,
-          });
-        }
-
-        this.emit('message', { ...message, timestamp, dataReported });
+      if (shouldIgnore) {
+        return;
       }
+
+      console.log('receive data', hexValue, message);
+      console.log('should report?', !!reportData, reportData);
+
+      const timestamp = Date.now();
+      let dataReported = false;
+
+      if (this._deviceName && reportData) {
+        dataReported = true;
+
+        await this._actions.reportDeviceData({
+          deviceId: this.explorerDeviceId,
+          deviceName: this._deviceName,
+          productId: this._productId,
+          data: reportData,
+          timestamp,
+        });
+      }
+
+      this.emit('message', { ...message, timestamp, dataReported });
     } catch (err) {
       console.error('onBLECharacteristicValueChange onError,', err);
     }
@@ -229,93 +272,42 @@ export class DeviceAdapter extends BlueToothBase {
    *  2. 获取服务列表、特征列表
    *  3. 监听notify，注册回调
    */
-  async connectDevice() {
+  async connectDevice({
+    autoNotify = true,
+  } = {}) {
     try {
-      let isConnected = false;
-
       // 当前已经连接的话，无需再执行：
       // createBLEConnection、getBLEDeviceServices、getBLEDeviceCharacteristics、notifyBLECharacteristicValueChange 等步骤
       // 直接调用监听 onBLEConnectionStateChange、onBLECharacteristicValueChange 回调即可
       if (this._deviceConnected) {
         console.log('Device已经连接', this._deviceId);
-        isConnected = true;
+        return;
       }
 
-      if (!isConnected) {
-        await this.registerDevice();
+      await this.registerDevice();
 
-        await this._bluetoothApi.createBLEConnection({
-          deviceId: this._deviceId,
-        });
+      await this._bluetoothApi.createBLEConnection({
+        deviceId: this._deviceId,
+      });
 
-        console.log('createBLEConnection succ');
+      console.log('createBLEConnection succ');
 
-        const { services } = await this._bluetoothApi.getBLEDeviceServices({
-          deviceId: this._deviceId,
-        });
-
-        this._services = services;
+      if (autoNotify) {
+        const services = await this.getBLEDeviceServices();
 
         console.log('getBLEDeviceServices succ', services);
 
-        // TODO：有必要判断主服务id吗？
-        if (!services.find(item => item.uuid === this.serviceId)) {
-          console.log('BLEDeviceService do not contain main serviceId', this.serviceId);
-          this.disconnectDevice();
-          throw '暂不支持该品类设备，请确认设备型号后重新连接';
-        }
-
         this.emit('onGetBLEDeviceServices', services);
 
-        const { characteristics } = await this._bluetoothApi.getBLEDeviceCharacteristics({
-          deviceId: this._deviceId,
-          serviceId: this.serviceId,
-        });
-
-        this._characteristics = characteristics;
+        const characteristics = await this.getBLEDeviceCharacteristics();
 
         console.log('getBLEDeviceCharacteristics succ', characteristics);
 
         this.emit('onGetBLEDeviceCharacteristics', characteristics);
 
-        const setCharacteristicsId = (idSet, uuid) => {
-          if (idSet.indexOf(uuid) === -1) {
-            idSet.push(uuid);
-          }
-        };
+        await this.notifyBLECharacteristicValueChange();
 
-        // 这里可以指定需要监听的id，指定后就不会再次赋值
-        // TODO: 指定后，是否需要校验是否存在？
-        characteristics.forEach(({
-          uuid,
-          properties: {
-            notify, write, indicate, read,
-          },
-        }) => {
-          if (notify) {
-            setCharacteristicsId(this._notifyIds, uuid);
-          } else if (write) {
-            setCharacteristicsId(this._writeIds, uuid);
-          } else if (indicate) {
-            setCharacteristicsId(this._indicateIds, uuid);
-          } else if (read) {
-            setCharacteristicsId(this._readIds, uuid);
-          }
-        });
-
-        const notifyId = this._getNotifyId();
-
-        if (!notifyId) {
-          console.warn('该设备不支持 notify');
-        } else {
-          await this._bluetoothApi.notifyBLECharacteristicValueChange({
-            deviceId: this._deviceId,
-            characteristicId: notifyId,
-            serviceId: this.serviceId,
-            state: true,
-          });
-          console.log('notifyBLECharacteristicValueChange succ');
-        }
+        console.log('notifyBLECharacteristicValueChange succ');
       }
     } catch (err) {
       console.error('connectDevice error', err);
@@ -323,7 +315,10 @@ export class DeviceAdapter extends BlueToothBase {
     }
   }
 
-  async write(data, writeId = '') {
+  async write(data, {
+    writeId = '',
+    serviceId = '',
+  } = {}) {
     if (typeof data === 'string') {
       console.log('writeBLECharacteristicValue', data);
       data = hexToArrayBuffer(data);
@@ -334,19 +329,132 @@ export class DeviceAdapter extends BlueToothBase {
       }
     }
 
-    return this._write(data, writeId);
+    return this._write(data, { writeId, serviceId });
   }
 
-  async _write(value, writeId = '') {
+  async _write(value, {
+    writeId = '',
+    serviceId = '',
+  } = {}) {
     try {
       await this._bluetoothApi.writeBLECharacteristicValue({
         deviceId: this._deviceId,
-        characteristicId: writeId || this._writeIds[0],
-        serviceId: this.serviceId,
-        value: value,
+        characteristicId: writeId || this._writeId,
+        serviceId: serviceId || this.serviceId,
+        value,
       });
     } catch (err) {
       return Promise.reject(this._normalizeError(err));
     }
+  }
+
+  async getBLEDeviceServices() {
+    const { services } = await this._bluetoothApi.getBLEDeviceServices({
+      deviceId: this._deviceId,
+    });
+
+    this._services = services;
+
+    return services;
+  }
+
+  setCharacteristicsIds(serviceId, characteristics) {
+    const map = {
+      notifyIds: [],
+      writeIds: [],
+      indicateIds: [],
+      readIds: [],
+    };
+
+    const setCharacteristicsId = (idSet, uuid) => {
+      if (idSet.indexOf(uuid) === -1) {
+        idSet.push(uuid);
+      }
+    };
+
+    characteristics.forEach(({
+      uuid,
+      properties: {
+        notify, write, indicate, read,
+      },
+    }) => {
+      if (notify) {
+        setCharacteristicsId(map.notifyIds, uuid);
+      } else if (write) {
+        setCharacteristicsId(map.writeIds, uuid);
+      } else if (indicate) {
+        setCharacteristicsId(map.indicateIds, uuid);
+      } else if (read) {
+        setCharacteristicsId(map.readIds, uuid);
+      }
+    });
+
+    this.characteristicsMap[serviceId] = map;
+  }
+
+  async getBLEDeviceCharacteristics({
+    serviceId = '',
+  } = {}) {
+    serviceId = serviceId || this.serviceId;
+
+    const { characteristics } = await this._bluetoothApi.getBLEDeviceCharacteristics({
+      deviceId: this._deviceId,
+      serviceId,
+    });
+
+    this.setCharacteristicsIds(serviceId, characteristics);
+
+    return characteristics;
+  }
+
+  async notifyBLECharacteristicValueChange({
+    characteristicId = '',
+    serviceId = '',
+    state = true,
+  } = {}) {
+    characteristicId = characteristicId || this._getNotifyId();
+    serviceId = serviceId || this.serviceId;
+
+    if (!characteristicId) {
+      console.warn('未找到指定service下的notifyId，该设备可能不支持notify');
+    } else {
+      await this._bluetoothApi.notifyBLECharacteristicValueChange({
+        deviceId: this._deviceId,
+        characteristicId,
+        serviceId,
+        state,
+      });
+    }
+  }
+
+  async readBLECharacteristicValue({
+    serviceId = '',
+    characteristicId = '',
+  } = {}) {
+    serviceId = serviceId || this.serviceId;
+
+    if (!characteristicId) {
+      characteristicId = ((this.characteristicsMap[this.serviceId] || {}).readIds || [])[0];
+    }
+
+    if (!characteristicId) {
+      console.warn('未找到指定service下的readId，该设备可能不支持read');
+    } else {
+      await this._bluetoothApi.readBLECharacteristicValue({
+        deviceId: this._deviceId,
+        characteristicId,
+        serviceId,
+      });
+    }
+  }
+
+  setBLEMTU(params) {
+    return this._bluetoothApi.setBLEMTU(params);
+  }
+
+  getBLEDeviceRSSI() {
+    return this._bluetoothApi.getBLEDeviceRSSI({
+      deviceId: this._deviceId,
+    });
   }
 }

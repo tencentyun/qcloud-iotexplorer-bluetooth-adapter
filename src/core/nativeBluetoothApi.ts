@@ -1,8 +1,9 @@
-import { pify } from '../libs/utillib';
+import { delay, pify } from '../libs/utillib';
 
 const pifyApiArr = [
   'closeBluetoothAdapter',
   'stopBluetoothDevicesDiscovery',
+  'readBLECharacteristicValue',
   'openBluetoothAdapter',
   'getBluetoothAdapterState',
   'getBluetoothDevices',
@@ -54,6 +55,8 @@ apis.createBLEConnection = async (params, isRetry = false) => {
 
       try {
         await apis.closeBLEConnection(params);
+        // 等一下再重连，否则可能出现重新连上后始终无法获取services报100004问题
+        await delay(1000);
         console.log('disconnect success', params);
       } catch (err) {
         console.warn('disconnect fail', err);
