@@ -2,7 +2,7 @@ import { arrayBufferToHexStringArray, hexToArrayBuffer, hexToStr, } from '../lib
 import { BlueToothBase } from './BlueToothBase';
 import { BlueToothActions } from "./BlueToothAdapter";
 
-export interface DeviceInfo extends WechatMiniprogram.BlueToothDevice {
+export interface BlueToothDeviceInfo extends WechatMiniprogram.BlueToothDevice {
   deviceName: string; // 设备唯一标识，同时也会作为 explorer 的 deviceName
   serviceId: string;
 }
@@ -13,22 +13,23 @@ export interface BLEMessageResponse {
   [propName: string]: any; // 其他会透传给 message 事件
 }
 
-type DeviceAdapterActions = Omit<BlueToothActions, 'initProductIds'>;
+export type DeviceAdapterActions = Omit<BlueToothActions, 'initProductIds'>;
+
+export interface DeviceFilterExtendInfo {
+  serviceIds?: string[];
+  deviceName?: string;
+  productId?: string;
+  ignoreDeviceIds?: string[];
+  ignoreServiceIds?: string[];
+  extendInfo?: any;
+}
+
+export type DeviceFilterFunction = (deviceInfo: WechatMiniprogram.BlueToothDevice, extendInfo: DeviceFilterExtendInfo) => BlueToothDeviceInfo | void | false | null;
 
 /**
  * 设备适配器
  */
 export class DeviceAdapter extends BlueToothBase {
-  static helper: {
-    hexToArrayBuffer: (hexString: string) => ArrayBuffer;
-    arrayBufferToHexStringArray: (arrayBuffer: ArrayBuffer) => string[];
-    hexToStr: (hexString: string) => string;
-  } = {
-    hexToArrayBuffer,
-    arrayBufferToHexStringArray,
-    hexToStr,
-  };
-
   constructor({
     deviceId,
     productId,
@@ -161,8 +162,8 @@ export class DeviceAdapter extends BlueToothBase {
    * @param deviceInfo
    * @param extendInfo
    */
-  static deviceFilter(deviceInfo: WechatMiniprogram.BlueToothDevice, extendInfo?: any): DeviceInfo | false {
-    throw new Error('具体产品需要自行实现该方法');
+  static deviceFilter: DeviceFilterFunction = (deviceInfo, extendInfo) => {
+    // 具体设备需要自行实现该方法
   }
 
   static serviceId = ''; // 子类实现时必须设置主服务id
@@ -283,8 +284,6 @@ export class DeviceAdapter extends BlueToothBase {
         console.log('Device已经连接', this._deviceId);
         return;
       }
-
-      await this.registerDevice();
 
       await this._bluetoothApi.createBLEConnection({
         deviceId: this._deviceId,

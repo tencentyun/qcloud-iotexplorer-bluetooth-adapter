@@ -1,4 +1,4 @@
-import { BlueToothAdapter, BlueToothAdapterProps, SearchDeviceParams, StartSearchParams } from "../core";
+import { BlueToothAdapter, BlueToothAdapterProps, BlueToothDeviceInfo, SearchDeviceParams, StartSearchParams } from "../core";
 import { arrayBufferToHexStringArray, hexToArrayBuffer, isEmpty } from "../libs/utillib";
 
 const parseAdvertisData = (device) => {
@@ -310,8 +310,10 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
     this.startCleanupTimer();
   }
 
-  async searchDevice(params: SearchDeviceParams) {
-    await super.searchDevice(params);
+  async searchDevice(params: SearchDeviceParams): Promise<BlueToothDeviceInfo> {
+    const deviceInfo = await super.searchDevice(params);
     this.startCleanupTimer();
+
+    return deviceInfo;
   }
 }

@@ -1,7 +1,7 @@
 import EventEmitter from "event-emitter-for-miniprogram";
 import { arrayBufferToHexStringArray, isEmpty, noop } from '../libs/utillib';
 import { BlueToothBase } from './BlueToothBase';
-import { DeviceAdapter, DeviceInfo } from './DeviceAdapter';
+import { DeviceAdapter, BlueToothDeviceInfo } from './DeviceAdapter';
 import nativeBluetoothApi from './nativeBluetoothApi';
 import { throttle } from '../libs/throttle';
 
@@ -41,7 +41,7 @@ export interface H5Websocket extends EventEmitter {
   };
   _manuallyClose: boolean;
   _connected: boolean;
-  isConnect: () => boolean;
+  isConnected: () => boolean;
   doConnectWs: () => Promise<any>;
   connect: () => Promise<any>;
   disconnect: (manually: boolean) => any;
@@ -50,9 +50,9 @@ export interface H5Websocket extends EventEmitter {
 }
 
 export interface BlueToothAdapterProps {
-  deviceAdapters: DeviceAdapter[];
-  actions: BlueToothActions;
-  bluetoothApi: any;
+  deviceAdapters?: (typeof DeviceAdapter)[];
+  actions?: BlueToothActions;
+  bluetoothApi?: any;
   h5Websocket: H5Websocket;
   devMode?: (() => boolean) | boolean;
 }
@@ -67,13 +67,13 @@ export interface SearchDeviceBaseParams {
 }
 
 export interface StartSearchParams extends SearchDeviceBaseParams {
-  onSearch?: (devices: DeviceInfo[]) => any;
+  onSearch?: (devices: BlueToothDeviceInfo[]) => any;
   onError?: (error: Error | object | string) => any;
 }
 
 export interface SearchDeviceParams extends SearchDeviceBaseParams {
   deviceName?: string;
-  explorerDeviceId?: string;
+  productId?: string;
 }
 
 /**
@@ -160,6 +160,7 @@ export class BlueToothAdapter extends BlueToothBase {
     devices = [],
     serviceIds,
     deviceName,
+    productId,
     ignoreDeviceIds = [],
     ignoreServiceIds = [],
     extendInfo = {},
@@ -167,10 +168,11 @@ export class BlueToothAdapter extends BlueToothBase {
     devices: WechatMiniprogram.BlueToothDevice[];
     serviceIds?: string[];
     deviceName?: string;
+    productId?: string;
     ignoreDeviceIds?: string[];
     ignoreServiceIds?: string[];
     extendInfo?: any;
-  }): DeviceInfo[] {
+  }): BlueToothDeviceInfo[] {
     if (!serviceIds || !serviceIds.length) {
       serviceIds = this._getSupportServiceIds();
     }
@@ -197,7 +199,14 @@ export class BlueToothAdapter extends BlueToothBase {
       let matchedDevice;
 
       for (let i = 0, l = deviceFilters.length; i < l; i++) {
-        matchedDevice = deviceFilters[i](devices[i], extendInfo);
+        matchedDevice = deviceFilters[i](devices[i], {
+          serviceIds,
+          deviceName,
+          productId,
+          ignoreDeviceIds,
+          ignoreServiceIds,
+          extendInfo,
+        });
 
         if (deviceName) {
           if (matchedDevice && matchedDevice.deviceName === deviceName) {
@@ -461,19 +470,13 @@ export class BlueToothAdapter extends BlueToothBase {
     serviceIds,
     // deviceName 和 deviceId 二选一
     deviceName,
-    explorerDeviceId,
+    productId,
     ignoreDeviceIds = [],
     timeout = 5 * 1000,
     extendInfo = {},
-  }: SearchDeviceParams) {
+  }: SearchDeviceParams): Promise<BlueToothDeviceInfo> {
     if (serviceId && !serviceIds) {
       serviceIds = [serviceId];
-    }
-
-    if (!deviceName && explorerDeviceId) {
-      const [, _deviceName] = explorerDeviceId.split('/');
-
-      deviceName = _deviceName;
     }
 
     console.log('searching for explorerDeviceId => ', deviceName);
@@ -497,6 +500,7 @@ export class BlueToothAdapter extends BlueToothBase {
             devices,
             serviceIds,
             deviceName,
+            productId,
             ignoreDeviceIds,
             extendInfo,
           });
