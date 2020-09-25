@@ -1,4 +1,4 @@
-import EventEmitter from '../libs/event-emmiter';
+import EventEmitter from 'event-emitter-for-miniprogram';
 
 const errorMap = {
   10000: '未初始化蓝牙适配器',

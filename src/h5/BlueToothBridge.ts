@@ -1,4 +1,4 @@
-import EventEmitter from '../libs/event-emmiter';
+import EventEmitter from 'event-emitter-for-miniprogram';
 import { tryCallHandler } from '../libs/utillib';
 
 /**

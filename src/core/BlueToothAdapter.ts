@@ -1,9 +1,9 @@
+import EventEmitter from "event-emitter-for-miniprogram";
 import { arrayBufferToHexStringArray, isEmpty, noop } from '../libs/utillib';
 import { BlueToothBase } from './BlueToothBase';
 import { DeviceAdapter, DeviceInfo } from './DeviceAdapter';
 import nativeBluetoothApi from './nativeBluetoothApi';
 import { throttle } from '../libs/throttle';
-import EventEmitter from "../libs/event-emmiter";
 
 // 交由外部实现如下action，核心代码不关注其各端差异
 export interface BlueToothActions {
@@ -34,11 +34,26 @@ export interface BlueToothActions {
   }) => Promise<any>;
 }
 
+export interface H5Websocket extends EventEmitter {
+  requestHandlerMap: Map<string, (any) => any>;
+  options: {
+    url: string;
+  };
+  _manuallyClose: boolean;
+  _connected: boolean;
+  isConnect: () => boolean;
+  doConnectWs: () => Promise<any>;
+  connect: () => Promise<any>;
+  disconnect: (manually: boolean) => any;
+  send: (action: string, data: any, options?: { reqId?: string }) => Promise<any>;
+  activeConnect: () => Promise<any>;
+}
+
 export interface BlueToothAdapterProps {
   deviceAdapters: DeviceAdapter[];
   actions: BlueToothActions;
   bluetoothApi: any;
-  h5Websocket: EventEmitter;
+  h5Websocket: H5Websocket;
   devMode?: (() => boolean) | boolean;
 }
 
