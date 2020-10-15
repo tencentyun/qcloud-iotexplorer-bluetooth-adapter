@@ -1,6 +1,6 @@
 {
 	"name": "qcloud-iotexplorer-bluetooth-adapter",
-	"version": "0.0.22",
+	"version": "0.0.24",
 	"description": "",
 	"main": "lib/index.js",
 	"scripts": {
@@ -14,7 +14,7 @@
 		"url": "https://github.com/tencentyun/qcloud-iotexplorer-appdev-sdk/issues"
 	},
 	"dependencies": {
-		"event-emitter-for-miniprogram": "0.0.6",
+		"event-emitter-for-miniprogram": "^0.0.8",
 		"shortid-for-miniprogram": "^2.2.15"
 	},
 	"devDependencies": {

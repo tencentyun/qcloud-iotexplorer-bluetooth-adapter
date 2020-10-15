@@ -542,7 +542,6 @@ export class BlueToothAdapter extends BlueToothBase {
     deviceName,
     name,
     productId,
-    autoNotify,
   }: {
     deviceId: string;
     serviceId: string;
@@ -550,8 +549,11 @@ export class BlueToothAdapter extends BlueToothBase {
     deviceName: string;
     name: string;
     productId?: string;
+  }, {
+    autoNotify
+  }: {
     autoNotify?: boolean;
-  }) {
+  } = {}) {
     if (mac) {
       console.warn('[DEPRECATED] mac is deprecated, please use deviceName instead.');
     }
