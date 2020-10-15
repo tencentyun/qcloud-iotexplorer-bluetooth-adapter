@@ -5,6 +5,7 @@ import { BlueToothActions } from "./BlueToothAdapter";
 export interface BlueToothDeviceInfo extends WechatMiniprogram.BlueToothDevice {
   deviceName: string; // 设备唯一标识，同时也会作为 explorer 的 deviceName
   serviceId: string;
+  productId: string;
 }
 
 export interface BLEMessageResponse {
@@ -189,13 +190,17 @@ export class DeviceAdapter extends BlueToothBase {
     try {
       await this.registerDevice();
 
-      await this._actions.bindDevice({
+      const params = {
         deviceId: this.explorerDeviceId,
         deviceName: this._deviceName,
         productId: this._productId,
         familyId,
         roomId,
-      });
+      };
+
+      await this._actions.bindDevice(params);
+
+      this.emit('bind', params);
 
       return this.explorerDeviceId;
     } catch (err) {

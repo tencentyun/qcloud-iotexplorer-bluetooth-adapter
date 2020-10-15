@@ -120,7 +120,7 @@ export function hexToStr(hex) {
 
   for (let i = 0; i < len; i = i + 2) {
     curCharCode = parseInt(rawStr.substr(i, 2), 16); // ASCII Code Value
-    resultStr.push(String.fromCharCode(parseInt(rawStr.substr(i, 2), 16)));
+    resultStr.push(String.fromCharCode(parseInt(rawStr.substr(i,  2), 16)));
   }
 
   return resultStr.join('');

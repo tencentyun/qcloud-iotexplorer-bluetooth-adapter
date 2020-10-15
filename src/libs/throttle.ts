@@ -20,7 +20,7 @@
  *
  * @return {Function}  A new, throttled, function.
  */
-export function throttle(delay, noTrailing, callback, debounceMode) {
+export function throttle(delay?: any, noTrailing?: any, callback?: any, debounceMode?: any) {
 
   /*
    * After wrapper has stopped being called, this timeout ensures that

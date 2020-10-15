@@ -53,7 +53,7 @@ export interface BlueToothAdapterProps {
   deviceAdapters?: (typeof DeviceAdapter)[];
   actions?: BlueToothActions;
   bluetoothApi?: any;
-  h5Websocket: H5Websocket;
+  h5Websocket?: H5Websocket;
   devMode?: (() => boolean) | boolean;
 }
 
@@ -121,7 +121,7 @@ export class BlueToothAdapter extends BlueToothBase {
   _deviceAdapterMap = {};
 
   // serviceId => productId
-  _productIdMap = {};
+  _productIdMap: { [serviceId: string]: string } = {};
 
   // deviceId => deviceAdapter
   _deviceMap = {};
@@ -198,8 +198,8 @@ export class BlueToothAdapter extends BlueToothBase {
 
       let matchedDevice;
 
-      for (let i = 0, l = deviceFilters.length; i < l; i++) {
-        matchedDevice = deviceFilters[i](devices[i], {
+      for (let j = 0, lenJ = deviceFilters.length; j < lenJ; j++) {
+        matchedDevice = deviceFilters[j](devices[i], {
           serviceIds,
           deviceName,
           productId,
@@ -468,7 +468,6 @@ export class BlueToothAdapter extends BlueToothBase {
   searchDevice({
     serviceId,
     serviceIds,
-    // deviceName 和 deviceId 二选一
     deviceName,
     productId,
     ignoreDeviceIds = [],
