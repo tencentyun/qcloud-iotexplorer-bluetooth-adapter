@@ -398,6 +398,8 @@ export class BlueToothAdapter extends BlueToothBase {
     timeout = 20 * 1000,
     extendInfo = {},
   }: StartSearchParams): Promise<any> {
+    await this.init();
+
     if (serviceId && !serviceIds) {
       serviceIds = [serviceId];
     }
@@ -465,7 +467,7 @@ export class BlueToothAdapter extends BlueToothBase {
   /**
    * 目前的交互只支持展示一台待连接设备，所以搜到第一台设备后就停止
    */
-  searchDevice({
+  async searchDevice({
     serviceId,
     serviceIds,
     deviceName,
@@ -474,6 +476,8 @@ export class BlueToothAdapter extends BlueToothBase {
     timeout = 5 * 1000,
     extendInfo = {},
   }: SearchDeviceParams): Promise<BlueToothDeviceInfo> {
+    await this.init();
+
     if (serviceId && !serviceIds) {
       serviceIds = [serviceId];
     }
@@ -554,6 +558,8 @@ export class BlueToothAdapter extends BlueToothBase {
   }: {
     autoNotify?: boolean;
   } = {}) {
+    await this.init();
+
     if (mac) {
       console.warn('[DEPRECATED] mac is deprecated, please use deviceName instead.');
     }

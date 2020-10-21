@@ -322,7 +322,7 @@ export class DeviceAdapter extends BlueToothBase {
   async write(data, {
     writeId = '',
     serviceId = '',
-  } = {}) {
+  } = {}): Promise<void> {
     if (typeof data === 'string') {
       console.log('writeBLECharacteristicValue', data);
       data = hexToArrayBuffer(data);
@@ -339,7 +339,7 @@ export class DeviceAdapter extends BlueToothBase {
   async _write(value, {
     writeId = '',
     serviceId = '',
-  } = {}) {
+  } = {}): Promise<void> {
     try {
       await this._bluetoothApi.writeBLECharacteristicValue({
         deviceId: this._deviceId,
