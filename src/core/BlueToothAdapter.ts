@@ -159,7 +159,7 @@ export class BlueToothAdapter extends BlueToothBase {
   _filterDevices({
     devices = [],
     serviceIds,
-    deviceName,
+    deviceName = '',
     productId,
     ignoreDeviceIds = [],
     ignoreServiceIds = [],

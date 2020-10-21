@@ -5,7 +5,7 @@ import { BlueToothActions } from "./BlueToothAdapter";
 export interface BlueToothDeviceInfo extends WechatMiniprogram.BlueToothDevice {
   deviceName: string; // 设备唯一标识，同时也会作为 explorer 的 deviceName
   serviceId: string;
-  productId: string;
+  productId?: string; // 对于自定义蓝牙协议的设备，filter的时候是没有这个productId的，需要后面动态查询的
 }
 
 export interface BLEMessageResponse {
@@ -123,6 +123,10 @@ export class DeviceAdapter extends BlueToothBase {
 
   get deviceName() {
     return this._deviceName;
+  }
+
+  set deviceName(deviceName){
+    this._deviceName = deviceName;
   }
 
   get isConnected() {
@@ -270,7 +274,7 @@ export class DeviceAdapter extends BlueToothBase {
     });
 
     // disconnect 后 blueToothAdapter 会直接销毁这个实例，所以其他都不用清理了
-    this.emit('disconnect');
+    this.emit('disconnect', this._deviceId);
   }
 
   /**
