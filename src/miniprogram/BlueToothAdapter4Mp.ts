@@ -269,7 +269,7 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
       }
 
       this.cleanup();
-    }, 5 * 1000); // TODO: 这个时间需要观察如何最佳
+    }, 30 * 1000); // TODO: 这个时间需要观察如何最佳
   }
 
   async init() {
