@@ -225,7 +225,7 @@ export class DeviceAdapter extends BlueToothBase {
     console.log('onBleConnectionStateChange', connected, this._deviceConnected);
 
     if (connected) {
-      this.emit('connect');
+      this.emit('connect', {...this.deviceInfo});
     } else if (this._deviceConnected) {
       // 当前状态是连接中，且新状态是断开时，才会去调 disconnect
       this.disconnectDevice();
