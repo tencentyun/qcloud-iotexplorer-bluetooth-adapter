@@ -125,7 +125,7 @@ export class DeviceAdapter extends BlueToothBase {
     return this._deviceName;
   }
 
-  set deviceName(deviceName){
+  set deviceName(deviceName) {
     this._deviceName = deviceName;
   }
 
@@ -144,6 +144,15 @@ export class DeviceAdapter extends BlueToothBase {
   get serviceId() {
     // @ts-ignore
     return this.constructor.serviceId;
+  }
+
+  get deviceInfo() {
+    return {
+      productId: this.productId,
+      deviceName: this.deviceName,
+      deviceId: this.deviceId,
+      explorerDeviceId: this.explorerDeviceId
+    }
   }
 
   // 各自适配器根据业务需要覆盖，
@@ -277,7 +286,7 @@ export class DeviceAdapter extends BlueToothBase {
     });
 
     // disconnect 后 blueToothAdapter 会直接销毁这个实例，所以其他都不用清理了
-    this.emit('disconnect', this._deviceId);
+    this.emit('disconnect', { ...this.deviceInfo });
   }
 
   /**
