@@ -232,7 +232,10 @@ export class DeviceAdapter extends BlueToothBase {
     value,
   }) {
     try {
-      const hexValue = arrayBufferToHexStringArray(value);
+      let hexValue = value;
+      if (value instanceof ArrayBuffer) {
+        hexValue = arrayBufferToHexStringArray(value);
+      }
       const { shouldIgnore, reportData, ...message } = this.handleBLEMessage(hexValue, {
         serviceId,
         characteristicId,
