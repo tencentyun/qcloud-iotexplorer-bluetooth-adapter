@@ -1,3 +1,22 @@
+export const isMiniProgram = (function () {
+  // 通过关键 api 是否存在来判断小程序环境
+  try {
+    return !!(wx && wx.request && wx.connectSocket);
+  } catch (e) {
+    return false;
+  }
+})();
+
+export const isBrowser = (function () {
+  try {
+    if (isMiniProgram) return false;
+
+    return typeof window !== 'undefined' && typeof window.document !== 'undefined'
+  } catch (e) {
+    return false;
+  }
+})();
+
 export const delay = timeout => new Promise(resolve => setTimeout(() => resolve(), timeout));
 
 export function arrayBufferToHexStringArray(buffer) {
