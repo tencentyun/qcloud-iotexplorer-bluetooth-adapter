@@ -488,4 +488,8 @@ export class DeviceAdapter extends BlueToothBase {
 			deviceId: this._deviceId,
 		});
 	}
+
+	destroy() {
+		this.emit('destroy');
+	}
 }

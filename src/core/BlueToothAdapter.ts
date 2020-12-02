@@ -75,6 +75,8 @@ export interface StartSearchParams extends SearchDeviceBaseParams {
 export interface SearchDeviceParams extends SearchDeviceBaseParams {
 	deviceName?: string;
 	productId?: string;
+	ignoreWarning?: boolean;
+	ignoreCache?: boolean;
 }
 
 /**
@@ -261,6 +263,9 @@ export class BlueToothAdapter extends BlueToothBase {
 					this._deviceMap[deviceId].disconnectDevice();
 				}
 			});
+
+			// cleanup后清理所有 deviceAdapter
+			this._deviceMap = {};
 		}
 	}
 
@@ -481,7 +486,13 @@ export class BlueToothAdapter extends BlueToothBase {
 		ignoreDeviceIds = [],
 		timeout = 5 * 1000,
 		extendInfo = {},
+		ignoreWarning = false,
+		ignoreCache = false,
 	}: SearchDeviceParams): Promise<BlueToothDeviceInfo> {
+		if (!ignoreWarning) {
+			console.warn('[DEPRECATED] searchDevice + connectDevice 的方式连接设备已废弃，请直接使用 searchAndConnectDevice 方法，会自动处理连接缓存已经失效重搜等逻辑。');
+		}
+
 		await this.init();
 
 		if (serviceId && !serviceIds) {
@@ -490,20 +501,22 @@ export class BlueToothAdapter extends BlueToothBase {
 
 		console.log('searching for explorerDeviceId => ', deviceName);
 
-		const deviceCache = this.deviceCacheManager.getDeviceCache(deviceName);
+		if (!ignoreCache) {
+			const deviceCache = this.deviceCacheManager.getDeviceCache(deviceName);
 
-		if (deviceCache) {
-			console.log(`find ble deviceInfo for ${deviceName}`, {
-				deviceName,
-				productId,
-				...deviceCache,
-			});
+			if (deviceCache) {
+				console.log(`find ble deviceInfo for ${deviceName}`, {
+					deviceName,
+					productId,
+					...deviceCache,
+				});
 
-			return Promise.resolve({
-				deviceName,
-				productId,
-				...deviceCache,
-			} as any);
+				return Promise.resolve({
+					deviceName,
+					productId,
+					...deviceCache,
+				} as any);
+			}
 		}
 
 		return (this._searchDevicePromise || (this._searchDevicePromise = new Promise(async (resolve, reject) => {
@@ -620,23 +633,80 @@ export class BlueToothAdapter extends BlueToothBase {
 				name,
 				productId,
 			});
-			console.log('deviceConnected');
 
 			// 走到这里说明连接成功了
+			console.log('deviceConnected');
 
-			// TODO: 是否可以优化，不销毁实例？就不需要重新读deviceName了
-			deviceAdapter
-				.on('disconnect', () => {
-					console.log('ondisconnect, cleanup adapter', deviceAdapter);
-					delete this._deviceMap[deviceId];
-				});
+			const destroy = () => {
+				console.log('destroy adapter', deviceAdapter);
 
-			console.log('return adapter');
+				delete this._deviceMap[deviceId];
+			};
+
+			// TODO：disconnect不再清楚adapter，观察有何副作用
+			deviceAdapter.on('destroy', destroy);
 
 			return deviceAdapter;
 		} catch (err) {
 			this.deviceCacheManager.removeDeviceCache(deviceName);
 			delete this._deviceMap[deviceId];
+			return Promise.reject(err);
+		}
+	}
+
+	async searchAndConnectDevice({
+		serviceId,
+		serviceIds,
+		deviceName,
+		productId,
+		ignoreDeviceIds = [],
+		timeout = 5 * 1000,
+		extendInfo = {},
+	}: SearchDeviceParams, { autoNotify }: { autoNotify?: boolean; }) {
+		const deviceCache = this.deviceCacheManager.getDeviceCache(deviceName);
+
+		let deviceInfo = await this.searchDevice({
+			serviceId,
+			serviceIds,
+			deviceName,
+			productId,
+			ignoreDeviceIds,
+			timeout,
+			extendInfo,
+			ignoreWarning: true,
+			ignoreCache: !deviceCache,
+		});
+
+		const doConnect = async (deviceInfo) => {
+			if (!deviceInfo) {
+				return Promise.reject({ code: 'DeviceNotFound' });
+			}
+
+			return await this.connectDevice(deviceInfo, { autoNotify });
+		};
+
+		try {
+			return await doConnect(deviceInfo);
+		} catch (err) {
+			console.log('connect device fail, with deviceCache', deviceCache);
+
+			// 如果是有缓存情况下连接失败，再去尝试搜索
+			if (deviceCache) {
+				deviceInfo = await this.searchDevice({
+					serviceId,
+					serviceIds,
+					deviceName,
+					productId,
+					ignoreDeviceIds,
+					timeout,
+					extendInfo,
+					ignoreWarning: true,
+					ignoreCache: true,
+				});
+
+				return await doConnect(deviceInfo);
+			}
+
 			return Promise.reject(err);
 		}
 	}
