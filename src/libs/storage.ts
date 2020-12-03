@@ -14,7 +14,15 @@ export const storage: StorageApi = {
 				const { data } = await pify(wx.getStorage)({ key });
 				return data;
 			} else if (isBrowser) {
-				return window.localStorage.getItem(key);
+				let data = window.localStorage.getItem(key);
+
+				if (data) {
+					try {
+						data = JSON.parse(data);
+					} catch (err) {}
+				}
+
+				return data;
 			}
 		} catch (err) {
 			return null;
@@ -28,6 +36,12 @@ export const storage: StorageApi = {
 					data
 				});
 			} else if (isBrowser) {
+				if (data) {
+					try {
+						data = JSON.stringify(data);
+					} catch (err) {}
+				}
+
 				window.localStorage.setItem(key, data);
 			}
 		} catch (err) {

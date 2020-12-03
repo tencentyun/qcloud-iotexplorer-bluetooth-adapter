@@ -185,4 +185,8 @@ export class BlueToothBridge extends EventEmitter {
   offBluetoothDeviceFound() {
     this._onBluetoothDeviceFoundHandler = null;
   }
+
+  closeBluetoothAdapter() {
+    // h5 没资格主动去关 adapter
+  }
 }

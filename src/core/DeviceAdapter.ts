@@ -267,13 +267,17 @@ export class DeviceAdapter extends BlueToothBase {
 			if (this._deviceName && reportData) {
 				dataReported = true;
 
-				await this._actions.reportDeviceData({
-					deviceId: this.explorerDeviceId,
-					deviceName: this._deviceName,
-					productId: this._productId,
-					data: reportData,
-					timestamp,
-				});
+				if (typeof this._actions.reportDeviceData === 'function') {
+					await this._actions.reportDeviceData({
+						deviceId: this.explorerDeviceId,
+						deviceName: this._deviceName,
+						productId: this._productId,
+						data: reportData,
+						timestamp,
+					});
+				} else {
+					console.warn('handleBLEMessage return should report but actions.reportDeviceData is not implement.');
+				}
 			}
 
 			this.emit('message', { ...message, timestamp, dataReported });

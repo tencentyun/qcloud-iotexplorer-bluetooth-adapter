@@ -589,9 +589,13 @@ export class BlueToothAdapter extends BlueToothBase {
 		name: string;
 		productId?: string;
 	}, {
-		autoNotify
+		autoNotify,
+		destroyAdapterAfterDisconnect = true,
+		enableDeviceCache = false,
 	}: {
 		autoNotify?: boolean;
+		destroyAdapterAfterDisconnect?: boolean;
+		enableDeviceCache?: boolean;
 	} = {}) {
 		await this.init();
 
@@ -609,42 +613,60 @@ export class BlueToothAdapter extends BlueToothBase {
 				throw `无匹配serviceId为${serviceId}的 deviceAdapter`;
 			}
 
-			if (this._deviceMap[deviceId] && this._deviceMap[deviceId].isConnected) {
-				console.log('find device adapter', this._deviceMap[deviceId]);
-				return this._deviceMap[deviceId];
+			let deviceAdapter = this._deviceMap[deviceId];
+
+			if (deviceAdapter && deviceAdapter.isConnected) {
+				console.log('device already connected, returning adapter', this._deviceMap[deviceId]);
+				return deviceAdapter;
 			}
 
-			// 必须在这里挂载实例，因为连接设备时触发的一些回调是从 this._deviceMap 上去找 deviceAdapter 触发的
-			const deviceAdapter = this._deviceMap[deviceId] = new DeviceAdapter({
-				deviceId,
-				deviceName,
-				// 标准蓝牙协议在设备里面是有productId写入的
-				productId,
-				name,
-				actions: this._actions,
-				bluetoothApi: this._bluetoothApi,
-			});
+			if (!deviceAdapter) {
+				// 必须在这里挂载实例，因为连接设备时触发的一些回调是从 this._deviceMap 上去找 deviceAdapter 触发的
+				deviceAdapter = this._deviceMap[deviceId] = new DeviceAdapter({
+					deviceId,
+					deviceName,
+					// 标准蓝牙协议在设备里面是有productId写入的
+					productId,
+					name,
+					actions: this._actions,
+					bluetoothApi: this._bluetoothApi,
+				});
+			}
 
 			await deviceAdapter.connectDevice({ autoNotify });
 
-			this.deviceCacheManager.setDeviceCache(deviceName, {
-				deviceId,
-				serviceId,
-				name,
-				productId,
-			});
+			if (enableDeviceCache) {
+				// 风险点：deviceName冲突？
+				this.deviceCacheManager.setDeviceCache(deviceName, {
+					deviceId,
+					serviceId,
+					name,
+					productId,
+				});
+			}
 
 			// 走到这里说明连接成功了
 			console.log('deviceConnected');
 
-			const destroy = () => {
+			const onDestroy = () => {
 				console.log('destroy adapter', deviceAdapter);
 
 				delete this._deviceMap[deviceId];
 			};
 
-			// TODO：disconnect不再清楚adapter，观察有何副作用
-			deviceAdapter.on('destroy', destroy);
+			const onDisconnect = () => {
+				// adapter 可能是复用的，每次断开后解绑前事件
+				deviceAdapter.off('disconnect', onDisconnect);
+
+				if (destroyAdapterAfterDisconnect) {
+					onDestroy();
+				}
+			};
+
+			// TODO：disconnect不再清除adapter，观察有何副作用
+			deviceAdapter
+				.on('destroy', onDestroy)
+				.on('disconnect', onDisconnect);
 
 			return deviceAdapter;
 		} catch (err) {
@@ -662,7 +684,15 @@ export class BlueToothAdapter extends BlueToothBase {
 		ignoreDeviceIds = [],
 		timeout = 5 * 1000,
 		extendInfo = {},
-	}: SearchDeviceParams, { autoNotify }: { autoNotify?: boolean; }) {
+	}: SearchDeviceParams, {
+		autoNotify,
+		destroyAdapterAfterDisconnect = true,
+		enableDeviceCache = false,
+	}: {
+		autoNotify?: boolean;
+		destroyAdapterAfterDisconnect?: boolean;
+		enableDeviceCache?: boolean;
+	} = {}) {
 		const deviceCache = this.deviceCacheManager.getDeviceCache(deviceName);
 
 		let deviceInfo = await this.searchDevice({
@@ -682,7 +712,15 @@ export class BlueToothAdapter extends BlueToothBase {
 				return Promise.reject({ code: 'DeviceNotFound' });
 			}
 
-			return await this.connectDevice(deviceInfo, { autoNotify });
+			if (!deviceInfo.productId && productId) {
+				deviceInfo.productId = productId;
+			}
+
+			return await this.connectDevice(deviceInfo, {
+				autoNotify,
+				destroyAdapterAfterDisconnect,
+				enableDeviceCache,
+			});
 		};
 
 		try {
