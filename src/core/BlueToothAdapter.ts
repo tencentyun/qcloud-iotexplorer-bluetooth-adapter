@@ -704,7 +704,7 @@ export class BlueToothAdapter extends BlueToothBase {
 			timeout,
 			extendInfo,
 			ignoreWarning: true,
-			ignoreCache: !deviceCache,
+			ignoreCache: enableDeviceCache || !deviceCache,
 		});
 
 		const doConnect = async (deviceInfo) => {
