@@ -1,6 +1,6 @@
 import { arrayBufferToHexStringArray, delay, hexToArrayBuffer, hexToStr, } from '../libs/utillib';
 import { BlueToothBase } from './BlueToothBase';
-import { BlueToothActions } from "./BlueToothAdapter";
+import { BlueToothActions, H5Websocket } from "./BlueToothAdapter";
 
 export interface BlueToothDeviceInfo extends WechatMiniprogram.BlueToothDevice {
 	deviceName: string; // 设备唯一标识，同时也会作为 explorer 的 deviceName
@@ -38,6 +38,7 @@ export class DeviceAdapter extends BlueToothBase {
 		name, // 设备原始名称
 		actions,
 		bluetoothApi,
+		h5Websocket,
 	}: {
 		deviceId: string; // 微信蓝牙的deviceid，非explorer的deviceid
 		productId: string;
@@ -45,6 +46,7 @@ export class DeviceAdapter extends BlueToothBase {
 		name: string; // 设备原始名称
 		actions: DeviceAdapterActions;
 		bluetoothApi: any;
+		h5Websocket?: H5Websocket;
 	}) {
 		super();
 
@@ -56,6 +58,7 @@ export class DeviceAdapter extends BlueToothBase {
 			throw 'productId为空';
 		}
 
+		this._h5Websocket = h5Websocket;
 		this._bluetoothApi = bluetoothApi;
 		this._actions = actions;
 		this._name = name;
@@ -63,6 +66,8 @@ export class DeviceAdapter extends BlueToothBase {
 		this._deviceId = deviceId;
 		this._productId = productId;
 	}
+
+	_h5Websocket;
 
 	_name = '';
 

@@ -1,4 +1,10 @@
-import { BlueToothAdapter, BlueToothAdapterProps, BlueToothDeviceInfo, SearchDeviceParams, StartSearchParams } from "../core";
+import {
+  BlueToothAdapter,
+  BlueToothAdapterProps,
+  BlueToothDeviceInfo,
+  SearchDeviceParams,
+  StartSearchParams
+} from "../core";
 import { arrayBufferToHexStringArray, hexToArrayBuffer, isEmpty } from "../libs/utillib";
 
 const parseAdvertisData = (device) => {
@@ -56,6 +62,12 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
           const { action, payload } = data;
 
           switch (action) {
+            case 'reportDeviceConnectStatus': {
+              const { connected, explorerDeviceId } = payload;
+
+              this.emit('onDeviceConnectStatusChange', { connected, explorerDeviceId });
+              break;
+            }
             case 'bindDevice': {
               try {
                 // 为了适配调试模式，支持传productId
