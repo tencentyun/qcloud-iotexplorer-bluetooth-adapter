@@ -1,39 +1,39 @@
 import { storage } from "../libs/storage";
 
 export interface BluetoothDeviceCacheInfo {
-	deviceId: string;
-	serviceId: string;
-	name: string;
-	productId?: string;
+  deviceId: string;
+  serviceId: string;
+  name: string;
+  productId?: string;
 }
 
 export class BluetoothDeviceCacheManager {
-	_storageKey = '__explorer-bluetooth-deviceCacheMap';
+  _storageKey = '__explorer-bluetooth-deviceCacheMap';
 
-	// deviceName -> deviceId
-	deviceCacheMap: { [explorerDeviceId: string]: BluetoothDeviceCacheInfo } = {};
+  // deviceName -> deviceId
+  deviceCacheMap: { [explorerDeviceId: string]: BluetoothDeviceCacheInfo } = {};
 
-	async init() {
-		this.deviceCacheMap = await storage.getItem(this._storageKey) || {};
-	}
+  async init() {
+    this.deviceCacheMap = await storage.getItem(this._storageKey) || {};
+  }
 
-	setDeviceCache(deviceName, deviceInfo: BluetoothDeviceCacheInfo) {
-		console.log('cache ble deviceInfo: ', deviceName, deviceInfo);
+  setDeviceCache(deviceName, deviceInfo: BluetoothDeviceCacheInfo) {
+    console.log('cache ble deviceInfo: ', deviceName, deviceInfo);
 
-		this.deviceCacheMap[deviceName] = deviceInfo;
+    this.deviceCacheMap[deviceName] = deviceInfo;
 
-		storage.setItem(this._storageKey, this.deviceCacheMap);
-	}
+    storage.setItem(this._storageKey, this.deviceCacheMap);
+  }
 
-	getDeviceCache(deviceName) {
-		return this.deviceCacheMap[deviceName];
-	}
+  getDeviceCache(deviceName) {
+    return this.deviceCacheMap[deviceName];
+  }
 
-	removeDeviceCache(deviceName) {
-		if (this.deviceCacheMap[deviceName]) {
-			this.deviceCacheMap[deviceName] = null;
+  removeDeviceCache(deviceName) {
+    if (this.deviceCacheMap[deviceName]) {
+      this.deviceCacheMap[deviceName] = null;
 
-			storage.setItem(this._storageKey, this.deviceCacheMap);
-		}
-	}
+      storage.setItem(this._storageKey, this.deviceCacheMap);
+    }
+  }
 }
