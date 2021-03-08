@@ -63,9 +63,13 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
 
           switch (action) {
             case 'reportDeviceConnectStatus': {
-              const { connected, explorerDeviceId } = payload;
+              const { connected, explorerDeviceId, deviceId } = payload;
 
-              this.emit('onDeviceConnectStatusChange', { connected, explorerDeviceId });
+              this.emit('onDeviceConnectStatusChange', {
+                connected,
+                explorerDeviceId,
+                deviceId,
+              });
               break;
             }
             case 'bindDevice': {
