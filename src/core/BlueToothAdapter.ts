@@ -143,6 +143,12 @@ export class BlueToothAdapter extends BlueToothBase {
 
   _searchDevicePromise = null;
 
+  deviceConnectStatusList: {
+    connected: boolean;
+    explorerDeviceId: string;
+    deviceId: string;
+  }[] = [];
+
   addAdapter(deviceAdapter) {
     const doAdd = (adapter) => {
       if (!Object.prototype.isPrototypeOf.call(DeviceAdapter, adapter)) {
@@ -231,6 +237,58 @@ export class BlueToothAdapter extends BlueToothBase {
 
   _getSupportServiceIds() {
     return Object.keys(this._deviceAdapterMap);
+  }
+
+  _getDeviceConnectStatus({
+    explorerDeviceId,
+    deviceId,
+  }: {
+    explorerDeviceId?: string;
+    deviceId?: string;
+  }) {
+    return this.deviceConnectStatusList.find(item => item.explorerDeviceId === explorerDeviceId || item.deviceId === deviceId)
+  }
+
+  // 所有设备连接状态变更统一在这里处理
+  // 包括h5同步过来的状态，以及 adapter 接收到的设备状态变化
+  onDeviceConnectStatusChange({
+    connected,
+    explorerDeviceId,
+    deviceId,
+  }) {
+    console.log('onDeviceConnectStatusChange', {
+      connected,
+      explorerDeviceId,
+      deviceId,
+    }, this.deviceConnectStatusList);
+    const target = this._getDeviceConnectStatus({
+      explorerDeviceId,
+      deviceId,
+    });
+
+    if (target) {
+      if (target.connected !== connected) {
+        console.log('device connect status did change', {
+          connected,
+          explorerDeviceId,
+          deviceId,
+        });
+        target.connected = connected;
+        this.emit('onDeviceConnectStatusChange', {
+          connected,
+          explorerDeviceId,
+          deviceId,
+        });
+      }
+    } else {
+      this.deviceConnectStatusList.push({ connected, explorerDeviceId, deviceId });
+      console.log('new device connected', this.deviceConnectStatusList);
+      this.emit('onDeviceConnectStatusChange', {
+        connected,
+        explorerDeviceId,
+        deviceId,
+      });
+    }
   }
 
   startBluetoothDevicesDiscovery() {
@@ -631,6 +689,20 @@ export class BlueToothAdapter extends BlueToothBase {
           actions: this._actions,
           bluetoothApi: this._bluetoothApi,
           h5Websocket: this._h5Websocket,
+        });
+
+        this.on('connect', () => {
+          this.onDeviceConnectStatusChange({
+            explorerDeviceId: deviceAdapter.explorerDeviceId,
+            connected: true,
+            deviceId,
+          });
+        }).on('disconnect', () => {
+          this.onDeviceConnectStatusChange({
+            explorerDeviceId: deviceAdapter.explorerDeviceId,
+            connected: false,
+            deviceId,
+          });
         });
       }
 

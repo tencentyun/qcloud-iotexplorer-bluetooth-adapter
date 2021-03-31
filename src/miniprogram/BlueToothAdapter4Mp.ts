@@ -40,6 +40,9 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
 
   _currentProductId = '';
 
+  // 业务实现层可以在此拦截 h5Websocket 的message handler，返回 true 代表业务层已 handle，返回 false 代表继续走原基类逻辑
+  handleH5WsMessage: ({ data, reqId }: { data: any; reqId: string }) => boolean = null;
+
   constructor({
     bluetoothApi,
     ...props
@@ -59,16 +62,28 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
         .on('message', async ({ data, reqId }) => {
           console.log('bluetooth ws on message', data);
 
+          if (typeof this.handleH5WsMessage === 'function') {
+            try {
+              const hasHandled = this.handleH5WsMessage({ data, reqId });
+
+              if (hasHandled) {
+                console.log('h5 message already handled by handleH5WsMessage implement.');
+
+                return;
+              }
+            } catch (err) {
+              console.error('call handleH5WsMessage error', err);
+            }
+          }
+
           const { action, payload } = data;
 
           switch (action) {
             case 'reportDeviceConnectStatus': {
               const { connected, explorerDeviceId, deviceId } = payload;
 
-              this.emit('onDeviceConnectStatusChange', {
-                connected,
-                explorerDeviceId,
-                deviceId,
+              this.onDeviceConnectStatusChange({
+                connected, explorerDeviceId, deviceId,
               });
               break;
             }
@@ -137,6 +152,8 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
                 // 先处理需要特殊处理的api
                 switch (api) {
                   case 'createBLEConnection': {
+                    this.tryCancelDisconnectDevice(params.deviceId);
+
                     await this._bluetoothApi.createBLEConnection(params);
 
                     this.response2BlueToothChanel('response', {}, reqId);
@@ -207,6 +224,56 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
             }
           }
         });
+    }
+  }
+
+  deviceDelayDisconnectQueue: { deviceId: string; timer: number }[] = [];
+
+  // 看看是否在队列，如果在则取消断开指令
+  tryCancelDisconnectDevice(deviceId): boolean {
+    const targetDeviceDisconnectOrderIndex = this.deviceDelayDisconnectQueue.findIndex((item) => {
+      return item.deviceId === deviceId;
+    });
+
+    if (targetDeviceDisconnectOrderIndex > -1) {
+      const targetDeviceDisconnectOrder = this.deviceDelayDisconnectQueue[targetDeviceDisconnectOrderIndex];
+
+      clearTimeout(targetDeviceDisconnectOrder.timer);
+
+      this.deviceDelayDisconnectQueue.splice(targetDeviceDisconnectOrderIndex, 1);
+
+      console.log(`Cancel disconnect device: ${deviceId}`);
+
+      return true;
+    }
+
+    console.log(`Try cancel disconnect device: ${deviceId}, but not found in queue, maybe it's already disconnected`);
+
+    return false;
+  }
+
+  // 加入队列，多少秒后断开设备
+  disconnectDevice({ deviceId, explorerDeviceId }: {
+    deviceId?: string;
+    explorerDeviceId?: string;
+  }, delay = 0) {
+    console.log('call disconnectDevice', { deviceId, explorerDeviceId });
+    const deviceConnectStatus = this._getDeviceConnectStatus({ deviceId, explorerDeviceId });
+
+    if (deviceConnectStatus && deviceConnectStatus.connected) {
+      if (delay > 0) {
+        const timer = setTimeout(() => {
+          console.log(`execute closeBLEConnection for deviceId: ${deviceId} after ${delay}ms`);
+          this._bluetoothApi.closeBLEConnection({ deviceId });
+        }, delay);
+
+        console.log(`Will disconnect device: ${deviceId} after ${delay}ms...`);
+        this.deviceDelayDisconnectQueue.push({ deviceId, timer });
+      } else {
+        this._bluetoothApi.closeBLEConnection({ deviceId });
+      }
+    } else {
+      console.log('call disconnectDevice, but device maybe not connected', deviceConnectStatus, this.deviceConnectStatusList);
     }
   }
 
