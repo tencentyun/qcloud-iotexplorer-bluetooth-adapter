@@ -4,7 +4,7 @@ import { tryCallHandler } from '../libs/utillib';
 /**
  * @doc https://developers.weixin.qq.com/miniprogram/dev/api/
  */
-export class BlueToothBridge extends EventEmitter {
+export class MpBlueToothBridge extends EventEmitter {
   _h5Websocket = null;
   _onBluetoothAdapterStateChangeHandler;
   _onBLEConnectionStateChangeHandler;

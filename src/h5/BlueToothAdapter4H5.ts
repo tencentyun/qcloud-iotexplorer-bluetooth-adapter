@@ -1,16 +1,20 @@
 import { BlueToothAdapter, BlueToothAdapterProps } from "../core";
-import { BlueToothBridge } from "./BlueToothBridge";
+import { MpBlueToothBridge } from "./MpBlueToothBridge";
+import { AppBlueToothBridge } from "./AppBlueToothBridge";
 
 export class BlueToothAdapter4H5 extends BlueToothAdapter {
   _blueToothBridge;
 
   constructor({
     h5Websocket,
+    appBridge,
     devMode,
     actions,
     ...props
   }: BlueToothAdapterProps) {
-    const blueToothBridge = new BlueToothBridge({ h5Websocket });
+    const blueToothBridge = appBridge ? 
+      new AppBlueToothBridge({ appBridge }) :
+      new MpBlueToothBridge({ h5Websocket });
 
     super({
       actions: {

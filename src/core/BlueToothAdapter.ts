@@ -54,8 +54,13 @@ export interface BlueToothAdapterProps {
   deviceAdapters?: (typeof DeviceAdapter)[];
   actions?: BlueToothActions;
   bluetoothApi?: any;
+  appBridge?: H5AppBridge;
   h5Websocket?: H5Websocket;
   devMode?: (() => boolean) | boolean;
+}
+
+export interface H5AppBridge extends EventEmitter {
+  callApp: (action: string, params?: Record<string, unknown>) => Promise<any>;
 }
 
 export interface SearchDeviceBaseParams {
@@ -89,6 +94,7 @@ export class BlueToothAdapter extends BlueToothBase {
     actions,
     bluetoothApi,
     h5Websocket,
+    appBridge,
     devMode,
   }: BlueToothAdapterProps) {
     super();
@@ -102,6 +108,7 @@ export class BlueToothAdapter extends BlueToothBase {
     }
 
     this._h5Websocket = h5Websocket;
+    this._appBridge = appBridge;
     this._bluetoothApi = bluetoothApi || nativeBluetoothApi;
     this._actions = actions;
     this.deviceCacheManager = new BluetoothDeviceCacheManager();
@@ -117,6 +124,7 @@ export class BlueToothAdapter extends BlueToothBase {
   }
 
   _h5Websocket;
+  _appBridge;
   _bluetoothApi: any = {};
 
   // @ts-ignore
