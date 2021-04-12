@@ -258,7 +258,7 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
     explorerDeviceId?: string;
   }, delay = 0) {
     console.log('call disconnectDevice', { deviceId, explorerDeviceId });
-    const deviceConnectStatus = this._getDeviceConnectStatus({ deviceId, explorerDeviceId });
+    const deviceConnectStatus = this._deviceConnectStatusStore.get({ deviceId, explorerDeviceId });
 
     if (deviceConnectStatus && deviceConnectStatus.connected) {
       if (delay > 0) {
@@ -273,7 +273,7 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
         this._bluetoothApi.closeBLEConnection({ deviceId });
       }
     } else {
-      console.log('call disconnectDevice, but device maybe not connected', deviceConnectStatus, this.deviceConnectStatusList);
+      console.log('call disconnectDevice, but device maybe not connected', deviceConnectStatus, this._deviceConnectStatusStore.getAll());
     }
   }
 
@@ -345,8 +345,10 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
     console.log('start cleanup timer');
 
     this._cleanupTimer = setTimeout(() => {
-      console.log('bluetooth searching or deviceMap not empty, reset cleanup timer', this._discovering, this._deviceMap);
-      if (this._h5ChanelOpened || this._discovering || !isEmpty(this._deviceMap)) {
+      const connectedDeviceList = this._deviceAdapterStore.getAll().filter(item => item.isConnected);
+      console.log('bluetooth searching or deviceMap not empty, reset cleanup timer', this._discovering, connectedDeviceList);
+
+      if (this._h5ChanelOpened || this._discovering || connectedDeviceList.length) {
         this.startCleanupTimer();
         return;
       }

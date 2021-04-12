@@ -38,34 +38,39 @@ callbackApiArr.forEach((apiKey) => {
   apis[apiKey] = params => wx[apiKey](params);
 });
 
-apis.createBLEConnection = async (params, isRetry = false) => {
+apis.createBLEConnection = async (params, {
+  isRetry = false,
+} = {}) => {
   try {
     await pify(wx.createBLEConnection)(params);
   } catch (err) {
     if (!isRetry && err && err.errMsg && err.errMsg.indexOf('already connect') > -1) {
-      // 碰到 already connect，需要先尝试断开，再重连
-      // zefengwang 7-10 下午 4:18
-      // 其实是客户端检查的…这个事情应该是最早的版本这里会直接重连，但是后面发现有问题，改成检查是否已经连接了
-      // vinsonxiao 7-10 下午 4:26
-      // 那我碰到这个错直接认为连接成功是不是可以？
-      // 还是需要先手动断开
-      // zefengwang 7-10 下午 4:28
-      // 先断开
-      console.log('already connect, try disconnect');
-
-      try {
-        await apis.closeBLEConnection(params);
-        // 等一下再重连，否则可能出现重新连上后始终无法获取services报100004问题
-        await delay(1000);
-        console.log('disconnect success', params);
-      } catch (err) {
-        console.warn('disconnect fail', err);
-      }
-
-      console.log('try connect again', params);
-
-      // 重试的时候再报错就不要处理了避免死循环
-      return apis.createBLEConnection(params, true);
+      // 这里观察下不断开是否有问题
+      console.log('device is already connected, resolve directly');
+      return Promise.resolve();
+      // // 碰到 already connect，需要先尝试断开，再重连
+      // // zefengwang 7-10 下午 4:18
+      // // 其实是客户端检查的…这个事情应该是最早的版本这里会直接重连，但是后面发现有问题，改成检查是否已经连接了
+      // // vinsonxiao 7-10 下午 4:26
+      // // 那我碰到这个错直接认为连接成功是不是可以？
+      // // 还是需要先手动断开
+      // // zefengwang 7-10 下午 4:28
+      // // 先断开
+      // console.log('already connect, try disconnect');
+      //
+      // try {
+      //   await apis.closeBLEConnection(params);
+      //   // 等一下再重连，否则可能出现重新连上后始终无法获取services报100004问题
+      //   await delay(1000);
+      //   console.log('disconnect success', params);
+      // } catch (err) {
+      //   console.warn('disconnect fail', err);
+      // }
+      //
+      // console.log('try connect again', params);
+      //
+      // // 重试的时候再报错就不要处理了避免死循环
+      // return apis.createBLEConnection(params, { isRetry: true });
     } else {
       return Promise.reject(err);
     }
