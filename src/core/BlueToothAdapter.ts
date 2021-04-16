@@ -7,6 +7,8 @@ import { throttle } from '../libs/throttle';
 import { BluetoothDeviceCacheManager } from "./BluetoothDeviceCacheManager";
 import { SimpleStore } from "../libs/SimpleStore";
 
+type DeviceAdapterFactory = typeof DeviceAdapter;
+
 // 交由外部实现如下action，核心代码不关注其各端差异
 export interface BlueToothActions {
   initProductIds?: () => Promise<{ [propKey: string]: string; }>;
@@ -66,6 +68,7 @@ export interface SearchDeviceBaseParams {
   ignoreServiceIds?: string[];
   timeout?: number;
   extendInfo?: any;
+  DeviceAdapter?: DeviceAdapterFactory;
 }
 
 export interface StartSearchParams extends SearchDeviceBaseParams {
@@ -184,6 +187,7 @@ export class BlueToothAdapter extends BlueToothBase {
     ignoreDeviceIds = [],
     ignoreServiceIds = [],
     extendInfo = {},
+    DeviceAdapter,
   }: {
     devices: WechatMiniprogram.BlueToothDevice[];
     serviceIds?: string[];
@@ -192,24 +196,34 @@ export class BlueToothAdapter extends BlueToothBase {
     ignoreDeviceIds?: string[];
     ignoreServiceIds?: string[];
     extendInfo?: any;
+    DeviceAdapter?: DeviceAdapterFactory;
   }): BlueToothDeviceInfo[] {
-    if (!serviceIds || !serviceIds.length) {
-      serviceIds = this._getSupportServiceIds();
+    let deviceFilters;
+
+    if (DeviceAdapter) {
+      serviceIds = [DeviceAdapter.serviceId];
+      deviceFilters = [DeviceAdapter.deviceFilter];
+
+      console.log('specific serviceId: ', serviceIds);
+    } else {
+      if (!serviceIds || !serviceIds.length) {
+        serviceIds = this._getSupportServiceIds();
+      }
+
+      const ignoreAdapterMap = {};
+
+      if (ignoreServiceIds && ignoreServiceIds.length) {
+        ignoreServiceIds.forEach(serviceId => ignoreAdapterMap[serviceId] = true);
+
+        serviceIds = serviceIds.filter(serviceId => !ignoreAdapterMap[serviceId]);
+      }
+
+      deviceFilters = serviceIds.map(id => this._deviceAdapterFactoryMap[id].deviceFilter);
+
+      console.log('support serviceIds', serviceIds);
     }
-
-    const ignoreAdapterMap = {};
-
-    if (ignoreServiceIds && ignoreServiceIds.length) {
-      ignoreServiceIds.forEach(serviceId => ignoreAdapterMap[serviceId] = true);
-
-      serviceIds = serviceIds.filter(serviceId => !ignoreAdapterMap[serviceId]);
-    }
-
-    console.log('support serviceIds', serviceIds);
 
     const results = [];
-
-    const deviceFilters = serviceIds.map(id => this._deviceAdapterFactoryMap[id].deviceFilter);
 
     for (let i = 0, l = devices.length; i < l; i++) {
       if (ignoreDeviceIds.find(deviceId => devices[i].deviceId === deviceId)) {
@@ -471,6 +485,7 @@ export class BlueToothAdapter extends BlueToothBase {
     onError = noop,
     timeout = 20 * 1000,
     extendInfo = {},
+    DeviceAdapter,
   }: StartSearchParams): Promise<any> {
     await this.init();
 
@@ -496,6 +511,7 @@ export class BlueToothAdapter extends BlueToothBase {
             ignoreDeviceIds,
             ignoreServiceIds,
             extendInfo,
+            DeviceAdapter,
           });
 
           _deviceFindedLength = matchedDevices.length;
@@ -552,6 +568,7 @@ export class BlueToothAdapter extends BlueToothBase {
     ignoreWarning = false,
     ignoreCache,
     disableCache,
+    DeviceAdapter, // 指定adapter，会自动忽略已经注入的adapter
   }: SearchDeviceParams): Promise<BlueToothDeviceInfo> {
     if (!ignoreWarning) {
       console.warn('[DEPRECATED] searchDevice + connectDevice 的方式连接设备已废弃，请直接使用 searchAndConnectDevice 方法，会自动处理连接缓存已经失效重搜等逻辑。');
@@ -609,6 +626,7 @@ export class BlueToothAdapter extends BlueToothBase {
             productId,
             ignoreDeviceIds,
             extendInfo,
+            DeviceAdapter,
           });
 
           console.log('matchedDevices: ', matchedDevices);
@@ -671,11 +689,13 @@ export class BlueToothAdapter extends BlueToothBase {
     productId?: string;
     extendInfo?: any;
   }, {
+    DeviceAdapter: SpecificDeviceAdapter,
     autoNotify,
     enableDeviceCache = true,
     destroyAdapterAfterDisconnect,
     disableCache,
   }: {
+    DeviceAdapter?: DeviceAdapterFactory;
     autoNotify?: boolean;
     enableDeviceCache?: boolean;
     disableCache?: boolean;
@@ -699,10 +719,20 @@ export class BlueToothAdapter extends BlueToothBase {
     productId = productId || this._productIdMap[serviceId];
 
     try {
-      const DeviceAdapter = this._deviceAdapterFactoryMap[serviceId];
+      let DeviceAdapter;
 
-      if (!DeviceAdapter) {
-        throw `无匹配serviceId为${serviceId}的 deviceAdapter`;
+      if (SpecificDeviceAdapter) {
+        if (SpecificDeviceAdapter.serviceId !== serviceId) {
+          throw `指定的DeviceAdapter serviceId 不匹配，${SpecificDeviceAdapter.serviceId} !== ${serviceId}`;
+        }
+
+        DeviceAdapter = SpecificDeviceAdapter;
+      } else {
+        DeviceAdapter = this._deviceAdapterFactoryMap[serviceId];
+
+        if (!DeviceAdapter) {
+          throw `无匹配serviceId为${serviceId}的 deviceAdapter`;
+        }
       }
 
       let deviceAdapter;
@@ -794,9 +824,11 @@ export class BlueToothAdapter extends BlueToothBase {
   }: SearchDeviceParams, {
     autoNotify,
     disableCache = false,
+    DeviceAdapter,
   }: {
     disableCache?: boolean;
     autoNotify?: boolean;
+    DeviceAdapter?: DeviceAdapterFactory;
   } = {}) {
     try {
       let deviceAdapter;
@@ -826,6 +858,7 @@ export class BlueToothAdapter extends BlueToothBase {
           extendInfo,
           ignoreWarning: true,
           disableCache,
+          DeviceAdapter,
         });
 
         if (!deviceInfo) {
@@ -840,6 +873,7 @@ export class BlueToothAdapter extends BlueToothBase {
         deviceAdapter = await this.connectDevice(deviceInfo, {
           autoNotify,
           disableCache,
+          DeviceAdapter,
         });
 
         return deviceAdapter;
