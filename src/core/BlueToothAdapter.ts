@@ -719,7 +719,7 @@ export class BlueToothAdapter extends BlueToothBase {
     productId = productId || this._productIdMap[serviceId];
 
     try {
-      let DeviceAdapter;
+      let DeviceAdapter: DeviceAdapterFactory;
 
       if (SpecificDeviceAdapter) {
         if (SpecificDeviceAdapter.serviceId !== serviceId) {
@@ -763,6 +763,7 @@ export class BlueToothAdapter extends BlueToothBase {
           bluetoothApi: this._bluetoothApi,
           h5Websocket: this._h5Websocket,
           extendInfo,
+          bluetoothAdapter: this,
         });
 
         this._deviceAdapterStore.set(deviceAdapter);

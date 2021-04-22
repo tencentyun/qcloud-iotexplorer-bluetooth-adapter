@@ -1,6 +1,6 @@
 import { arrayBufferToHexStringArray, delay, hexToArrayBuffer, hexToStr, } from '../libs/utillib';
 import { BlueToothBase } from './BlueToothBase';
-import { BlueToothActions, H5Websocket } from "./BlueToothAdapter";
+import { BlueToothActions, BlueToothAdapter, H5Websocket } from "./BlueToothAdapter";
 
 export interface BlueToothDeviceInfo extends WechatMiniprogram.BlueToothDevice {
   deviceName: string; // 设备唯一标识，同时也会作为 explorer 的 deviceName
@@ -40,6 +40,7 @@ export class DeviceAdapter extends BlueToothBase {
     bluetoothApi,
     h5Websocket,
     extendInfo = {},
+    bluetoothAdapter,
   }: {
     deviceId: string; // 微信蓝牙的deviceid，非explorer的deviceid
     productId: string;
@@ -49,6 +50,7 @@ export class DeviceAdapter extends BlueToothBase {
     bluetoothApi: any;
     h5Websocket?: H5Websocket;
     extendInfo?: any;
+    bluetoothAdapter: BlueToothAdapter;
   }) {
     super();
 
@@ -68,7 +70,10 @@ export class DeviceAdapter extends BlueToothBase {
     this._deviceId = deviceId;
     this._productId = productId;
     this.extendInfo = extendInfo || {};
+    this.bluetoothAdapter = bluetoothAdapter;
   }
+
+  bluetoothAdapter: BlueToothAdapter;
 
   extendInfo: any = {};
 
@@ -164,6 +169,14 @@ export class DeviceAdapter extends BlueToothBase {
       deviceId: this.deviceId,
       explorerDeviceId: this.explorerDeviceId,
       name: this.originName, // 设备原始名称
+    }
+  }
+
+  async init() {
+    if (this.bluetoothAdapter) {
+      await this.bluetoothAdapter.init();
+    } else {
+      console.warn('DeviceAdapter未注入bluetoothAdapter实例，可能使用的不是最新版本的qcloud-iotexplorer-bluetooth-adapter模块');
     }
   }
 
@@ -319,6 +332,8 @@ export class DeviceAdapter extends BlueToothBase {
     const startTime = Date.now();
 
     try {
+      await this.init();
+
       // 当前已经连接的话，无需再执行：
       // createBLEConnection、getBLEDeviceServices、getBLEDeviceCharacteristics、notifyBLECharacteristicValueChange 等步骤
       // 直接调用监听 onBLEConnectionStateChange、onBLECharacteristicValueChange 回调即可
