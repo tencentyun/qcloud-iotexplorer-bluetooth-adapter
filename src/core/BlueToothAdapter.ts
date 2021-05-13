@@ -463,6 +463,8 @@ export class BlueToothAdapter extends BlueToothBase {
     const devices = await this.getBluetoothDevices();
 
     try {
+      console.log('onBluetoothDeviceFound', devices);
+
       if (typeof this._onBluetoothDeviceFoundHandler === 'function') {
         this._onBluetoothDeviceFoundHandler(devices);
       }
