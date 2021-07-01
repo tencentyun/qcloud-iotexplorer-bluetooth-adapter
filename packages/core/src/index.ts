@@ -2,7 +2,7 @@
 
 import { arrayBufferToHexStringArray, hexToArrayBuffer, hexToStr } from "./libs/utillib";
 
-export * from './core';
+export * from './base';
 export * from './h5';
 export * from './miniprogram';
 export const blueToothHelper = {

@@ -1,4 +1,4 @@
-import { BlueToothAdapter, BlueToothAdapterProps } from "../core";
+import { BlueToothAdapter, BlueToothAdapterProps } from "../base";
 import { BlueToothBridge } from "./BlueToothBridge";
 
 export class BlueToothAdapter4H5 extends BlueToothAdapter {

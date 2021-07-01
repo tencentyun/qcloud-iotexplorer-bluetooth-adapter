@@ -4,7 +4,7 @@ import {
   BlueToothDeviceInfo,
   SearchDeviceParams,
   StartSearchParams
-} from "../core";
+} from "../base";
 import { arrayBufferToHexStringArray, hexToArrayBuffer, isEmpty } from "../libs/utillib";
 
 const parseAdvertisData = (device) => {
@@ -382,8 +382,8 @@ export class BlueToothAdapter4Mp extends BlueToothAdapter {
     });
   }
 
-  async onBluetoothDeviceFound() {
-    const devices = await super.onBluetoothDeviceFound();
+  async onBluetoothDeviceFound(params) {
+    const devices = await super.onBluetoothDeviceFound(params);
 
     this.response2BlueToothChanel('onBluetoothDeviceFound', {
       devices: devices.map(parseAdvertisData),

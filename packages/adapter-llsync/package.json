@@ -1,0 +1,22 @@
+{
+  "name": "qcloud-iotexplorer-bleadapter-llsync",
+  "version": "0.0.1",
+  "description": "",
+  "main": "lib/index.js",
+  "scripts": {
+    "build:lib": "rm -rf lib && npx tsc -p tsconfig.json -t es5 --outDir lib && node ../../bin/minify.js -p core -t lib",
+    "build": "npm run build:lib",
+    "dev": "rm -rf lib && npx tsc -p tsconfig.json -t es5 --outDir lib  --watch"
+  },
+  "author": "xiaoyuze88@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tencentyun/qcloud-iotexplorer-appdev-sdk/issues"
+  },
+  "dependencies": {
+    "event-emitter-for-miniprogram": "0.0.9",
+    "qcloud-iotexplorer-bluetooth-adapter": "^0.2.4",
+    "shortid-for-miniprogram": "^2.2.15",
+    "tslib": "^2.0.1"
+  }
+}

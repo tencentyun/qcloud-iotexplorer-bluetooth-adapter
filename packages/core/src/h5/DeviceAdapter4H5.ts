@@ -1,4 +1,4 @@
-import { DeviceAdapter } from "../core";
+import { DeviceAdapter } from "../base";
 import { arrayBufferToHexStringArray, hexToArrayBuffer } from "../libs/utillib";
 
 export class DeviceAdapter4H5 extends DeviceAdapter {
