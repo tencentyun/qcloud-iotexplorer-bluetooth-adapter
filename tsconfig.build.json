@@ -11,7 +11,11 @@
 		"lib": [
 			"es2017"
 		],
+    "types": [
+      "miniprogram-api-typings"
+    ],
 		"rootDir": "src",
+    "skipLibCheck": true,
 		"declaration": true,
 		"importHelpers": true,
 		"allowSyntheticDefaultImports": true,
