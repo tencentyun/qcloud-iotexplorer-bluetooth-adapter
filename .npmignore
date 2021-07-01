@@ -1,9 +1,0 @@
-src
-node_modules
-tsconfig.json
-webpack.config.js
-.npmrc
-.idea
-bin
-.npmignore
-global.d.ts

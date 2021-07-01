@@ -1,28 +1,29 @@
 {
-	"include": [
-		"src",
-		"global.d.ts"
-	],
-	"compilerOptions": {
-		"experimentalDecorators": true,
-		"moduleResolution": "node",
-		"module": "commonjs",
-		"target": "es5",
-		"lib": [
-			"es2017"
-		],
+  "include": [
+    "src",
+    "global.d.ts"
+  ],
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "lib": [
+      "es2017"
+    ],
+    "outDir": "./dist",
+    //    "jsx": "react",
+    //    "strict": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "importHelpers": true,
+    "sourceMap": true,
+    "downlevelIteration": true,
+    "resolveJsonModule": true,
     "types": [
       "miniprogram-api-typings"
     ],
-		"rootDir": "src",
-    "skipLibCheck": true,
-		"declaration": true,
-		"importHelpers": true,
-		"allowSyntheticDefaultImports": true,
-		"sourceMap": true,
-		"downlevelIteration": true,
-		"esModuleInterop": true,
-		"resolveJsonModule": true,
-		"allowJs": true
-	}
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": true
+  }
 }
